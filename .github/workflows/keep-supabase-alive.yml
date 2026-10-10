@@ -1,0 +1,24 @@
+name: Keep Supabase Database Alive
+on:
+  schedule:
+    # ทำงานทุกๆ 3 วัน เวลา 00:00 UTC (เพื่อป้องกัน Database Pause ทุก 7 วัน)
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # ปุ่มสำหรับกดสั่งทำงานด้วยตัวเองใน GitHub Actions tab
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/stapler_records?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          
+          echo "HTTP Response Status Code: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 206 ]; then
+            echo "Successfully pinged Supabase! Database is active."
+          else
+            echo "Warning: HTTP status returned $HTTP_STATUS"
+            # ถ้าส่ง status อื่นกลับมา แต่ไม่น่าจะล้มเหลวก็ถือว่าเป็นการส่ง request เข้าสู่ database แล้ว
+          fi
